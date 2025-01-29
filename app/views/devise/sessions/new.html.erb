@@ -1,0 +1,15 @@
+<h2>Log in</h2>
+
+<%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
+  <%= f.label :mobile_number %>
+  <%= f.text_field :mobile_number, autofocus: true, autocomplete: "mobile_number" %>
+
+  <%= f.label :password %>
+  <%= f.password_field :password, autocomplete: "current-password" %>
+
+  <%= f.label :otp %>
+  <%= f.text_field :otp, value: "1234" %> <!-- Default OTP -->
+
+  <%= f.submit "Log in" %>
+<% end %>
+

@@ -1,0 +1,162 @@
+<h1>New Order</h1>
+
+<%= form_with model: @order, url: orders_path, local: true do |f| %>
+  <!-- Customer Details -->
+  <fieldset>
+    <legend>Customer Details</legend>
+    <div>
+      <%= f.label :customer_name, "Customer Name" %>
+      <%= f.text_field :customer_name, required: true %>
+    </div>
+
+    <div>
+      <%= f.label :mobile_number, "Mobile Number" %>
+      <%= f.telephone_field :mobile_number, required: true %>
+    </div>
+  </fieldset>
+
+  <!-- Pizza Selection -->
+  <fieldset>
+    <legend>Pizza Selection</legend>
+    <div id="pizza-container">
+      <div class="nested-fields">
+        <div class="form-group">
+          <%= f.label :pizza_id, "Select Pizza" %>
+          <%= f.collection_select :pizza_id, @pizzas, :id, 
+          ->(pizza) { "#{pizza.name} (#{pizza.size}) (₹#{pizza.price})" }, 
+          { prompt: "Choose Your Pizza and Size" }, 
+          class: 'pizza-select', 
+          data: { prices: @pizzas.map { |p| [p.id, p.price] }.to_h.to_json } %>
+        </div>
+
+        <div class="form-group">
+          <%= f.label :crust_id, "Crust" %>
+          <%= f.collection_select :crust_id, @crusts, :id, 
+          ->(crust) { "#{crust.name} (₹#{crust.price})" }, 
+          { prompt: "Choose Your Crust" }, 
+          class: 'crust-select', 
+          data: { prices: @crusts.map { |c| [c.id, c.price] }.to_h.to_json } %>
+        </div>
+
+        <div class="form-group">
+          <%= f.label :topping_ids, "Toppings" %>
+          <% @toppings.each do |topping| %>
+            <div>
+              <%= f.check_box :topping_ids, { multiple: true, data: { price: topping.price } }, topping.id, nil %>
+              <%= label_tag "order_topping_ids_#{topping.id}", "#{topping.name} (₹#{topping.price})" %>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="form-group">
+          <%= f.label :quantity, "Quantity" %>
+          <%= f.number_field :quantity, min: 1, required: true, value: 1 %>
+        </div>
+
+        <%= link_to "Remove", "#", class: "remove_fields" %>
+      </div>
+    </div>
+    <button type="button" id="add_pizza">Add Pizza</button>
+  </fieldset>
+
+  <!-- Sides Selection -->
+  <div>
+    <label for="sides">Select Sides:</label>
+    <% Side.all.each do |side| %>
+      <div>
+        <%= check_box_tag "order[side_ids][]", side.id, false, class: 'side-checkbox', data: { price: side.price } %>
+        <%= label_tag "order_side_ids_#{side.id}", "#{side.name} (₹#{side.price})" %>
+        <%= f.number_field :side_quantity, min: 1, value: 1, class: 'side-quantity', data: { price: side.price } %>
+      </div>
+    <% end %>
+  </div>
+  <br />
+
+  <!-- Order Summary -->
+  <fieldset>
+    <legend>Order Summary</legend>
+    <div>
+      <%= f.label :total_amount, "Total Amount" %>
+      <%= f.text_field :total_amount, id: "total-amount", readonly: true, value: "0.0" %>
+    </div>
+
+    <div>
+      <%= f.label :order_status, "Order Status" %>
+      <%= f.select :order_status, ["Pending", "In Progress", "Completed"], prompt: "Select Status", required: true, value: "Pending" %>
+    </div>
+  </fieldset>
+
+  <div>
+    <%= f.submit "Place Order" %>
+  </div>
+<% end %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const pizzaContainer = document.getElementById('pizza-container');
+
+    document.addEventListener('change', (event) => {
+      if (event.target.classList.contains('pizza-select')) {
+        const prices = JSON.parse(event.target.dataset.prices);
+        const selectedId = event.target.value;
+        const price = prices[selectedId] || 0;
+        console.log("Selected pizza price:", price);
+      }
+    });
+
+    // Add Pizza
+    const addPizzaButton = document.getElementById('add_pizza');
+    addPizzaButton.addEventListener('click', function () {
+      const pizzaFieldsTemplate = pizzaContainer.querySelector('.nested-fields');
+      if (!pizzaFieldsTemplate) {
+        alert('Pizza fields template not found!');
+        return;
+      }
+      const newPizzaFields = pizzaFieldsTemplate.cloneNode(true);
+
+      // Reset form fields in cloned pizza
+      newPizzaFields.querySelectorAll('input, select').forEach(field => {
+        field.value = field.type === 'number' ? 1 : '';
+        if (field.type === 'checkbox') field.checked = false;
+      });
+      pizzaContainer.appendChild(newPizzaFields);
+    });
+
+    // Remove Pizza Listener
+    pizzaContainer.addEventListener('click', function (event) {
+      if (event.target.classList.contains('remove_fields')) {
+        event.preventDefault();
+        event.target.closest('.nested-fields').remove();
+      }
+    });
+
+    // Update total price dynamically
+    const calculateTotal = () => {
+      let total = 0;
+
+      // Calculate pizza prices
+      document.querySelectorAll('.nested-fields').forEach(pizza => {
+        const pizzaPrice = parseFloat(pizza.querySelector('.pizza-select')?.selectedOptions[0]?.dataset.price || 0);
+        const crustPrice = parseFloat(pizza.querySelector('[name*="crust_id"]')?.selectedOptions[0]?.dataset.price || 0);
+        const toppingsPrice = Array.from(pizza.querySelectorAll('[name*="topping_ids[]"]:checked'))
+          .reduce((sum, topping) => sum + parseFloat(topping.dataset.price || 0), 0);
+        const quantity = parseInt(pizza.querySelector('[name*="quantity"]')?.value || 1);
+
+        total += (pizzaPrice + crustPrice + toppingsPrice) * quantity;
+      });
+
+      // Calculate side prices
+      document.querySelectorAll('.side-checkbox:checked').forEach(side => {
+        const sidePrice = parseFloat(side.dataset.price || 0);
+        const quantityField = side.closest('div').querySelector('.side-quantity');
+        const quantity = parseInt(quantityField?.value || 1);
+        total += sidePrice * quantity;
+      });
+
+      document.getElementById('total-amount').value = total.toFixed(2);
+    };
+
+    document.addEventListener('change', calculateTotal);
+    document.addEventListener('input', calculateTotal);
+  });
+</script>

@@ -18,55 +18,52 @@
   <!-- Pizza Selection -->
   <fieldset>
     <legend>Pizza Selection</legend>
-    <div id="pizza-container">
+    <div id="pizza-container"></div>
+    <button type="button" id="add_pizza">Add Pizza</button>
+
+    <!-- Hidden template for adding pizza fields dynamically -->
+    <template id="pizza-template">
       <div class="nested-fields">
         <div class="form-group">
-          <%= f.label :pizza_id, "Select Pizza" %>
-          <%= f.collection_select :pizza_id, @pizzas, :id, 
-          ->(pizza) { "#{pizza.name} (#{pizza.size}) (₹#{pizza.price})" }, 
-          { prompt: "Choose Your Pizza and Size" }, 
-          class: 'pizza-select', 
-          data: { prices: @pizzas.map { |p| [p.id, p.price] }.to_h.to_json } %>
+          <label>Select Pizza</label>
+          <%= f.collection_select :pizza_id, @pizzas, :id, :formatted_name_price, { prompt: "Choose Your Pizza and Size" }, class: 'pizza-select' %>
         </div>
 
         <div class="form-group">
-          <%= f.label :crust_id, "Crust" %>
-          <%= f.collection_select :crust_id, @crusts, :id, 
-          ->(crust) { "#{crust.name} (₹#{crust.price})" }, 
-          { prompt: "Choose Your Crust" }, 
-          class: 'crust-select', 
-          data: { prices: @crusts.map { |c| [c.id, c.price] }.to_h.to_json } %>
+          <label>Select Crust</label>
+          <%= f.collection_select :crust_id, @crusts, :id, :formatted_crust_price, 
+            { prompt: "Choose Your Crust" }, 
+            { class: 'crust-select', data: { prices: @crusts.map { |c| [c.id, c.price] }.to_h.to_json } } 
+          %>
         </div>
 
         <div class="form-group">
-          <%= f.label :topping_ids, "Toppings" %>
+          <label>Quantity</label>
+          <input type="number" name="order[order_items][][quantity]" min="1" value="1">
+        </div>
+
+        <div class="form-group">
+          <label>Toppings</label>
           <% @toppings.each do |topping| %>
             <div>
-              <%= f.check_box :topping_ids, { multiple: true, data: { price: topping.price } }, topping.id, nil %>
+              <input type="checkbox" name="order[order_items][][topping_ids][]" value="<%= topping.id %>" data-price="<%= topping.price %>">
               <%= label_tag "order_topping_ids_#{topping.id}", "#{topping.name} (₹#{topping.price})" %>
             </div>
           <% end %>
         </div>
 
-        <div class="form-group">
-          <%= f.label :quantity, "Quantity" %>
-          <%= f.number_field :quantity, min: 1, required: true, value: 1 %>
-        </div>
-
-        <%= link_to "Remove", "#", class: "remove_fields" %>
+        <a href="#" class="remove-fields">Remove</a>
       </div>
-    </div>
-    <button type="button" id="add_pizza">Add Pizza</button>
+    </template>
   </fieldset>
 
   <!-- Sides Selection -->
   <div>
     <label for="sides">Select Sides:</label>
-    <% Side.all.each do |side| %>
+    <% @sides.each do |side| %>
       <div>
         <%= check_box_tag "order[side_ids][]", side.id, false, class: 'side-checkbox', data: { price: side.price } %>
         <%= label_tag "order_side_ids_#{side.id}", "#{side.name} (₹#{side.price})" %>
-        <%= f.number_field :side_quantity, min: 1, value: 1, class: 'side-quantity', data: { price: side.price } %>
       </div>
     <% end %>
   </div>
@@ -79,11 +76,6 @@
       <%= f.label :total_amount, "Total Amount" %>
       <%= f.text_field :total_amount, id: "total-amount", readonly: true, value: "0.0" %>
     </div>
-
-    <div>
-      <%= f.label :order_status, "Order Status" %>
-      <%= f.select :order_status, ["Pending", "In Progress", "Completed"], prompt: "Select Status", required: true, value: "Pending" %>
-    </div>
   </fieldset>
 
   <div>
@@ -94,53 +86,55 @@
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const pizzaContainer = document.getElementById('pizza-container');
+    const pizzaTemplate = document.getElementById('pizza-template');
+    let pizzaCounter = 0;
 
-    document.addEventListener('change', (event) => {
-      if (event.target.classList.contains('pizza-select')) {
-        const prices = JSON.parse(event.target.dataset.prices);
-        const selectedId = event.target.value;
-        const price = prices[selectedId] || 0;
-        console.log("Selected pizza price:", price);
-      }
-    });
-
-    // Add Pizza
-    const addPizzaButton = document.getElementById('add_pizza');
-    addPizzaButton.addEventListener('click', function () {
-      const pizzaFieldsTemplate = pizzaContainer.querySelector('.nested-fields');
-      if (!pizzaFieldsTemplate) {
+    document.getElementById('add_pizza').addEventListener('click', () => {
+      if (!pizzaTemplate) {
         alert('Pizza fields template not found!');
         return;
       }
-      const newPizzaFields = pizzaFieldsTemplate.cloneNode(true);
 
-      // Reset form fields in cloned pizza
+      pizzaCounter++;
+      const newPizzaFields = pizzaTemplate.content.cloneNode(true);
+
+      // Ensure strong parameter naming for nested attributes
       newPizzaFields.querySelectorAll('input, select').forEach(field => {
-        field.value = field.type === 'number' ? 1 : '';
-        if (field.type === 'checkbox') field.checked = false;
+        if (field.name) {
+          if (field.name.includes('order_items')) {
+            field.name = field.name.replace(/\[\]/, `[${pizzaCounter}]`);
+          }
+          if (field.classList.contains('pizza-select')) {
+            field.name = `order[order_items][${pizzaCounter}][pizza_id]`;
+          }
+          if (field.classList.contains('crust-select')) {
+            field.name = `order[order_items][${pizzaCounter}][crust_id]`;
+          }
+        }
       });
+
       pizzaContainer.appendChild(newPizzaFields);
     });
 
-    // Remove Pizza Listener
-    pizzaContainer.addEventListener('click', function (event) {
-      if (event.target.classList.contains('remove_fields')) {
+    // Remove Pizza Handler
+    pizzaContainer.addEventListener('click', event => {
+      if (event.target.classList.contains('remove-fields')) {
         event.preventDefault();
         event.target.closest('.nested-fields').remove();
+        calculateTotal();
       }
     });
 
-    // Update total price dynamically
+    // Price Calculation Logic
     const calculateTotal = () => {
       let total = 0;
 
-      // Calculate pizza prices
-      document.querySelectorAll('.nested-fields').forEach(pizza => {
-        const pizzaPrice = parseFloat(pizza.querySelector('.pizza-select')?.selectedOptions[0]?.dataset.price || 0);
-        const crustPrice = parseFloat(pizza.querySelector('[name*="crust_id"]')?.selectedOptions[0]?.dataset.price || 0);
-        const toppingsPrice = Array.from(pizza.querySelectorAll('[name*="topping_ids[]"]:checked'))
+      document.querySelectorAll('.nested-fields').forEach(block => {
+        const pizzaPrice = parseFloat(block.querySelector('.pizza-select')?.selectedOptions[0]?.dataset.price || 0);
+        const crustPrice = parseFloat(block.querySelector('.crust-select')?.selectedOptions[0]?.dataset.price || 0);
+        const toppingsPrice = Array.from(block.querySelectorAll('[name*="[topping_ids][]"]:checked'))
           .reduce((sum, topping) => sum + parseFloat(topping.dataset.price || 0), 0);
-        const quantity = parseInt(pizza.querySelector('[name*="quantity"]')?.value || 1);
+        const quantity = parseInt(block.querySelector('[name*="[quantity]"]')?.value || 1);
 
         total += (pizzaPrice + crustPrice + toppingsPrice) * quantity;
       });
@@ -148,15 +142,13 @@
       // Calculate side prices
       document.querySelectorAll('.side-checkbox:checked').forEach(side => {
         const sidePrice = parseFloat(side.dataset.price || 0);
-        const quantityField = side.closest('div').querySelector('.side-quantity');
-        const quantity = parseInt(quantityField?.value || 1);
-        total += sidePrice * quantity;
+        const sideQuantity = parseInt(side.closest('div').querySelector('.side-quantity')?.value || 1);
+        total += sidePrice * sideQuantity;
       });
 
       document.getElementById('total-amount').value = total.toFixed(2);
     };
 
     document.addEventListener('change', calculateTotal);
-    document.addEventListener('input', calculateTotal);
   });
 </script>

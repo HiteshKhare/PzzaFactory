@@ -11,4 +11,8 @@ class Crust < ApplicationRecord
   def self.ransackable_associations(auth_object = nil)
     ["pizzas"]
   end
+
+  def formatted_crust_price
+    "#{name} (₹#{price})"
+  end
 end

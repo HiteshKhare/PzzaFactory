@@ -1,2 +1,11 @@
-<h1>Orders#show</h1>
-<p>Find me in app/views/orders/show.html.erb</p>
+<h1>Order Details</h1>
+
+<p>Customer Name: <%= @order.customer_name %></p>
+<p>Mobile Number: <%= @order.mobile_number %></p>
+
+<h2>Items Ordered:</h2>
+<% @order.order_items.each do |item| %>
+  <p>Pizza: <%= item.pizza.name %> (Crust: <%= item.crust&.name || 'None' %>)</p>
+  <p>Quantity: <%= item.quantity %></p>
+  <p>Toppings: <%= item.toppings.map(&:name).join(', ') %></p>
+<% end %>

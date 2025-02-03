@@ -2,6 +2,7 @@ class OrderItem < ApplicationRecord
   belongs_to :order
   belongs_to :pizza, optional: true
   belongs_to :side, optional: true
+  belongs_to :crust, optional: true
 
   validates :quantity, presence: true, numericality: { greater_than: 0 }
   validates :price, presence: true, numericality: { greater_than_or_equal_to: 0 }

@@ -9,6 +9,7 @@ class Order < ApplicationRecord
 
   accepts_nested_attributes_for :pizzas, allow_destroy: true
   accepts_nested_attributes_for :sides, allow_destroy: true
+  accepts_nested_attributes_for :order_items, allow_destroy: true
 
   def self.ransackable_attributes(auth_object = nil)
     %w[created_at customer_name discount id id_value mobile_number order_status total_amount updated_at]
@@ -16,5 +17,13 @@ class Order < ApplicationRecord
 
   def self.ransackable_associations(auth_object = nil)
     %w[side customer products]
+  end
+
+  def total_price
+    if order_items.present?
+      order_items.pizzas.sum do |pizza|
+        pizza.price + pizza.toppings.sum(&:price) + pizza.crust.price
+      end + sides.sum(&:price)
+    end
   end
 end

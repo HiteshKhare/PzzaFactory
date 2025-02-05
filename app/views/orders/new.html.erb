@@ -21,35 +21,46 @@
     <div id="pizza-container"></div>
     <button type="button" id="add_pizza">Add Pizza</button>
 
-    <!-- Hidden template for adding pizza fields dynamically -->
+    <!-- Template for Adding Pizza Dynamically -->
     <template id="pizza-template">
       <div class="nested-fields">
-        <div class="form-group">
+        <div>
           <label>Select Pizza</label>
-          <%= f.collection_select :pizza_id, @pizzas, :id, :formatted_name_price, { prompt: "Choose Your Pizza and Size" }, class: 'pizza-select' %>
+          <select name="order[order_items][order_item_pizzas][][pizza_id]" class="pizza-select">
+            <option value="">Choose Your Pizza and Size</option>
+            <% @pizzas.each do |pizza| %>
+              <option value="<%= pizza.id %>" data-price="<%= pizza.price %>">
+                <%= pizza.formatted_name_price %>
+              </option>
+            <% end %>
+          </select>
         </div>
 
-        <div class="form-group">
+        <div>
           <label>Select Crust</label>
-          <%= f.collection_select :crust_id, @crusts, :id, :formatted_crust_price, 
-            { prompt: "Choose Your Crust" }, 
-            { class: 'crust-select', data: { prices: @crusts.map { |c| [c.id, c.price] }.to_h.to_json } } 
-          %>
+          <select name="order[order_items][order_item_pizzas][][crust_id]" class="crust-select">
+            <option value="">Choose Your Crust</option>
+            <% @crusts.each do |crust| %>
+              <option value="<%= crust.id %>" data-price="<%= crust.price %>">
+                <%= crust.formatted_crust_price %>
+              </option>
+            <% end %>
+          </select>
         </div>
 
-        <div class="form-group">
-          <label>Quantity</label>
-          <input type="number" name="order[order_items][][quantity]" min="1" value="1">
-        </div>
-
-        <div class="form-group">
+        <div>
           <label>Toppings</label>
           <% @toppings.each do |topping| %>
             <div>
-              <input type="checkbox" name="order[order_items][][topping_ids][]" value="<%= topping.id %>" data-price="<%= topping.price %>">
+              <input type="checkbox" name="order[order_items][order_item_pizzas][][topping_ids][]" value="<%= topping.id %>" data-price="<%= topping.price %>">
               <%= label_tag "order_topping_ids_#{topping.id}", "#{topping.name} (₹#{topping.price})" %>
             </div>
           <% end %>
+        </div>
+
+        <div>
+          <label>Quantity</label>
+          <input type="number" name="order[order_items][order_item_pizzas][][quantity]" min="1" value="1">
         </div>
 
         <a href="#" class="remove-fields">Remove</a>
@@ -60,12 +71,14 @@
   <!-- Sides Selection -->
   <div>
     <label for="sides">Select Sides:</label>
-    <% @sides.each do |side| %>
+    <% @sides.each_with_index do |side, index| %>
       <div>
-        <%= check_box_tag "order[side_ids][]", side.id, false, class: 'side-checkbox', data: { price: side.price } %>
-        <%= label_tag "order_side_ids_#{side.id}", "#{side.name} (₹#{side.price})" %>
+        <%= check_box_tag "order[order_items][order_item_sides][#{index}][side_id]", side.id, false, class: 'side-checkbox', data: { price: side.price } %>
+        <%= label_tag "order_order_item_order_item_sides_#{index}_side_id", "#{side.name} (₹#{side.price})" %>
+        <%= number_field_tag "order[order_items][order_item_sides][#{index}][quantity]", 1, min: 1, class: 'side-quantity', data: { price: side.price } %>
       </div>
     <% end %>
+
   </div>
   <br />
 
@@ -79,7 +92,7 @@
   </fieldset>
 
   <div>
-    <%= f.submit "Place Order" %>
+    <%= f.submit "Create Payment" %>
   </div>
 <% end %>
 
@@ -101,15 +114,7 @@
       // Ensure strong parameter naming for nested attributes
       newPizzaFields.querySelectorAll('input, select').forEach(field => {
         if (field.name) {
-          if (field.name.includes('order_items')) {
-            field.name = field.name.replace(/\[\]/, `[${pizzaCounter}]`);
-          }
-          if (field.classList.contains('pizza-select')) {
-            field.name = `order[order_items][${pizzaCounter}][pizza_id]`;
-          }
-          if (field.classList.contains('crust-select')) {
-            field.name = `order[order_items][${pizzaCounter}][crust_id]`;
-          }
+          field.name = field.name.replace(/\[\]/, `[${pizzaCounter}]`);
         }
       });
 
@@ -129,12 +134,12 @@
     const calculateTotal = () => {
       let total = 0;
 
-      document.querySelectorAll('.nested-fields').forEach(block => {
+      pizzaContainer.querySelectorAll('.nested-fields').forEach(block => {
         const pizzaPrice = parseFloat(block.querySelector('.pizza-select')?.selectedOptions[0]?.dataset.price || 0);
         const crustPrice = parseFloat(block.querySelector('.crust-select')?.selectedOptions[0]?.dataset.price || 0);
+        const quantity = parseInt(block.querySelector('[name*="[quantity]"]')?.value || 1);
         const toppingsPrice = Array.from(block.querySelectorAll('[name*="[topping_ids][]"]:checked'))
           .reduce((sum, topping) => sum + parseFloat(topping.dataset.price || 0), 0);
-        const quantity = parseInt(block.querySelector('[name*="[quantity]"]')?.value || 1);
 
         total += (pizzaPrice + crustPrice + toppingsPrice) * quantity;
       });
@@ -142,7 +147,8 @@
       // Calculate side prices
       document.querySelectorAll('.side-checkbox:checked').forEach(side => {
         const sidePrice = parseFloat(side.dataset.price || 0);
-        const sideQuantity = parseInt(side.closest('div').querySelector('.side-quantity')?.value || 1);
+        const quantityField = side.closest('div').querySelector('[name*="[quantity]"]');
+        const sideQuantity = parseInt(quantityField?.value || 1);
         total += sidePrice * sideQuantity;
       });
 

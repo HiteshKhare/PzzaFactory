@@ -1,4 +1,5 @@
-<h1>Last 5 Orders</h1>
+<h1>Pizza Orders</h1>
+
 <table>
   <thead>
     <tr>
@@ -6,7 +7,7 @@
       <th>Customer Name</th>
       <th>Mobile Number</th>
       <th>Total Amount</th>
-      <th>Status</th>
+      <th>Order Details</th>
     </tr>
   </thead>
   <tbody>
@@ -15,9 +16,47 @@
         <td><%= order.id %></td>
         <td><%= order.customer_name %></td>
         <td><%= order.mobile_number %></td>
-        <td><%= order.total_amount %></td>
-        <td><%= order.order_status %></td>
+        <td>₹<%= order.total_amount %></td>
+        <td>
+          <button onclick="toggleOrderDetails(<%= order.id %>)">Show Details</button>
+          <div id="order_details_<%= order.id %>" style="display:none;">
+            <ul>
+              <% order.order_items.each do |item| %>
+                <% item.order_item_pizzas.each do |order_pizza| %>
+                <% crust_price = Crust.find_by(id: order_pizza[:crust_id])&.price || 0 %>
+                <% toppings_price = order_pizza.toppings.sum(:price) %>
+                <% pizza_price = order_pizza.pizza&.price || 0 %>
+                  <li>
+                    <strong>Pizza:</strong> <%= order_pizza.pizza.name %> (<%= order_pizza.quantity %>)<br>
+                    <strong>Crust:</strong> <%= order_pizza.crust&.name || 'Default Crust' %><br>
+                    <strong>Toppings:</strong> <%= order_pizza.toppings.map(&:name).join(", ") %><br>
+                    <strong>Pizza Quentity:</strong> <%= order_pizza.quantity %><br>
+                    <strong>Pizza Price:</strong> ₹<%= (crust_price+toppings_price+pizza_price)*order_pizza.quantity %><br>
+                  </li>
+                <% end %>
+                <% item.order_item_sides.each do |order_side| %>
+                  <li>
+                    <strong>Side:</strong> <%= order_side.side&.name || 'No side' %><br>
+                    <strong>Side_Quentity:</strong> <%= order_side.quantity %><br>
+                    <strong>Side Price:</strong> ₹<%= (order_side.side&.price || 0)*order_side.quantity %><br>
+                  </li>
+                <% end %>
+              <% end %>
+            </ul>
+          </div>
+        </td>
       </tr>
     <% end %>
   </tbody>
 </table>
+
+<script>
+  function toggleOrderDetails(orderId) {
+    var orderDetails = document.getElementById('order_details_' + orderId);
+    if (orderDetails.style.display === "none") {
+      orderDetails.style.display = "block";
+    } else {
+      orderDetails.style.display = "none";
+    }
+  }
+</script>

@@ -1,8 +1,7 @@
 class Topping < ApplicationRecord
 	validates :name, presence: true
-  validates :price, presence: true, numericality: { greater_than: 0 }
 
-  has_and_belongs_to_many :pizzas
+  has_and_belongs_to_many :order_item_pizzas
   
   def self.ransackable_associations(auth_object = nil)
     %w[pizzas crusts] # Add the relevant associations

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_01_27_170527) do
+ActiveRecord::Schema[8.0].define(version: 2025_02_05_095419) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -63,10 +63,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_27_170527) do
     t.index ["topping_id"], name: "index_inventories_on_topping_id"
   end
 
+  create_table "order_item_pizzas", force: :cascade do |t|
+    t.bigint "order_item_id", null: false
+    t.bigint "pizza_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "crust_id"
+    t.index ["order_item_id"], name: "index_order_item_pizzas_on_order_item_id"
+    t.index ["pizza_id"], name: "index_order_item_pizzas_on_pizza_id"
+  end
+
+  create_table "order_item_pizzas_toppings", id: false, force: :cascade do |t|
+    t.bigint "order_item_pizza_id", null: false
+    t.bigint "topping_id", null: false
+  end
+
+  create_table "order_item_sides", force: :cascade do |t|
+    t.bigint "order_item_id", null: false
+    t.bigint "side_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_item_id"], name: "index_order_item_sides_on_order_item_id"
+    t.index ["side_id"], name: "index_order_item_sides_on_side_id"
+  end
+
   create_table "order_items", force: :cascade do |t|
     t.bigint "order_id", null: false
-    t.bigint "pizza_id", null: false
-    t.bigint "side_id", null: false
+    t.bigint "pizza_id"
+    t.bigint "side_id"
     t.integer "quantity"
     t.decimal "price"
     t.datetime "created_at", null: false
@@ -84,6 +110,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_27_170527) do
     t.string "order_status"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "side_quantity"
   end
 
   create_table "pizzas", force: :cascade do |t|
@@ -140,6 +167,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_27_170527) do
   add_foreign_key "inventories", "crusts"
   add_foreign_key "inventories", "sides"
   add_foreign_key "inventories", "toppings"
+  add_foreign_key "order_item_pizzas", "order_items"
+  add_foreign_key "order_item_pizzas", "pizzas"
+  add_foreign_key "order_item_sides", "order_items"
+  add_foreign_key "order_item_sides", "sides"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "pizzas"
   add_foreign_key "order_items", "sides"

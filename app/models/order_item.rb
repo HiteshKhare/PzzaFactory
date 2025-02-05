@@ -1,9 +1,11 @@
 class OrderItem < ApplicationRecord
   belongs_to :order
-  belongs_to :pizza, optional: true
-  belongs_to :side, optional: true
-  belongs_to :crust, optional: true
+  has_many :order_item_sides, dependent: :destroy
+  has_many :sides, through: :order_item_sides
 
-  validates :quantity, presence: true, numericality: { greater_than: 0 }
-  validates :price, presence: true, numericality: { greater_than_or_equal_to: 0 }
+  has_many :order_item_pizzas, dependent: :destroy
+  has_many :pizzas, through: :order_item_pizzas
+
+  accepts_nested_attributes_for :order_item_sides, allow_destroy: true
+  accepts_nested_attributes_for :order_item_pizzas, allow_destroy: true
 end
